@@ -1,4 +1,6 @@
 import sys
+import traceback
+import os
 from fontTools.ttLib import TTFont
 
 def get_unicode_range(range_str):
@@ -20,6 +22,20 @@ def get_unicode_range(range_str):
             codepoints.extend(range(int(start, 16), int(end, 16) + 1))
     return codepoints
 
+def copy_glyph_and_components(src_font, dst_font, glyph_name):
+    from fontTools.ttLib.tables._g_l_y_f import Glyph, GlyphComponent
+    if glyph_name not in src_font['glyf']:
+        return
+    dst_font['glyf'][glyph_name] = src_font['glyf'][glyph_name]
+    if glyph_name in src_font['hmtx'].metrics:
+        dst_font['hmtx'].metrics[glyph_name] = src_font['hmtx'].metrics[glyph_name]
+
+    # If the glyph is composite, copy its components recursively
+    glyph = src_font['glyf'][glyph_name]
+    if hasattr(glyph, 'components') and glyph.components:
+        for comp in glyph.components:
+            copy_glyph_and_components(src_font, dst_font, comp.glyphName)
+
 def merge_fonts(main_font_path, secondary_font_path, unicode_range):
     try:
         main_font = TTFont(main_font_path)
@@ -34,6 +50,8 @@ def merge_fonts(main_font_path, secondary_font_path, unicode_range):
         for codepoint in codepoints:
             glyph_name = secondary_font['cmap'].tables[0].cmap.get(codepoint)
             if glyph_name:
+                # 复制该字形及其所有组件
+                copy_glyph_and_components(secondary_font, main_font, glyph_name)
                 processed_count += 1
 
                 # 替换或添加字形
@@ -60,12 +78,16 @@ def merge_fonts(main_font_path, secondary_font_path, unicode_range):
             if glyph_name:
                 main_font['cmap'].tables[0].cmap[codepoint] = glyph_name
 
-        output_file = f'合并完成_{main_font_path}'
+        base_main_name = os.path.splitext(os.path.basename(main_font_path))[0]
+        base_secondary_name = os.path.splitext(os.path.basename(secondary_font_path))[0]
+        output_file = f'合并完成_{base_main_name}_{base_secondary_name}.ttf'
         main_font.save(output_file)
         print(f'合并完成，已将文件另存为：{output_file}')
 
     except Exception as e:
+        # more detailed error
         print(f"发生错误：{e}")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
