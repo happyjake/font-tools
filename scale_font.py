@@ -1,5 +1,5 @@
 import os
-from fontTools.ttLib import TTFont
+from fontTools.ttLib import TTFont, newTable
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.misc.transform import Identity
@@ -7,7 +7,29 @@ from fontTools.misc.transform import Identity
 def list_ttf_files(directory):
     return [f for f in os.listdir(directory) if f.endswith('.ttf')]
 
+def fix_gvar_table(font):
+    """Remove only glyph variations that fail to parse."""
+    if "gvar" not in font:
+        return
+    broken = []
+    for glyph_name in list(font["gvar"].variations.keys()):
+        try:
+            _ = font["gvar"].variations[glyph_name]  # Force parse
+        except AssertionError:
+            broken.append(glyph_name)
+    for glyph_name in broken:
+        del font["gvar"].variations[glyph_name]
+
 def adjust_weight(font, scale):
+    # Attempt to fix partial 'gvar' data first
+    fix_gvar_table(font)
+
+    # 先移除可能不完整的垂直度量表，以避免索引错误
+    # if "vhea" in font:
+    #     del font["vhea"]
+    # if "vmtx" in font:
+    #     del font["vmtx"]
+
     glyf_table = font['glyf']
     for glyph_name in font.getGlyphOrder():
         glyph = glyf_table[glyph_name]
