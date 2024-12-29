@@ -47,7 +47,7 @@ with tempfile.NamedTemporaryFile("w", suffix=".fea", delete=False) as tmp:
 
 try:
     builder = Builder(font, fea_path)
-    builder.build()
+    builder.build(debug=True)
 
     font.save(output_ttf)
     print(f"字体'{input_ttf}'已添加字距调整，并保存为'{output_ttf}'。")
