@@ -52,7 +52,7 @@ echo "可用的符号编码范围："
 for i in "${!symbol_ranges[@]}"; do
     case $i in
         0) description="仅数字" ;;
-        1) description="基本拉丁文（Basic latin，General punctuation）" ;;
+        1) description="基本拉丁文 - Basic latin，General punctuation" ;;
         2) description="盲文" ;;
         3) description="自定义输入" ;;
     esac
