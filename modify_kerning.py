@@ -15,13 +15,17 @@ font = TTFont(input_ttf)
 
 feature_code = """
 feature kern {
-    # 标点符号与字母的字距调整
+    # Define character classes
     @LETTERS = [A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 
                 a b c d e f g h i j k l m n o p q r s t u v w x y z];
-    @QUOTES = [quotesingle quotedbl quoteleft quoteright quotedblleft quotedblright];
+    @STRAIGHT_QUOTES = [quotesingle quotedbl];
+    @CURLY_QUOTES = [quoteleft quoteright quotedblleft quotedblright];
+    @PUNCTUATION = [period comma semicolon colon exclam question];
     
-    # 为所有引号类字符添加字距调整
-    pos @QUOTES @LETTERS -20;
+    # Kerning adjustments
+    pos @STRAIGHT_QUOTES @LETTERS -20;
+    pos @CURLY_QUOTES @LETTERS -20;
+    pos @PUNCTUATION @LETTERS -10;
 } kern;
 """
 
