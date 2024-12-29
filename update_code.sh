@@ -14,4 +14,4 @@ git pull
 pull_status=$?
 
 # Reapply Termux shebang
-termux-fix-shebang
+termux-fix-shebang *.sh
