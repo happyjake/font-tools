@@ -48,9 +48,15 @@ secondary_font="${ttf_files[$((secondary_index - 1))]}"
 #               如果不加上，合并后的字体在显示英文文章时会留下巨大的空格。
 # 0x2000-0x206F 整个general puctuation。 见 https://codepoints.net/general_punctuation
 symbol_ranges=("0x0030-0x0039" "0x0021-0x007E 0x2000-0x206F" "0x2800-0x28FF" "自定义输入")
-echo "可用的符号编码范围：1 仅数字 2 基本拉丁文 3 盲文 4 自定义输入"
+echo "可用的符号编码范围："
 for i in "${!symbol_ranges[@]}"; do
-    echo "$((i + 1)): ${symbol_ranges[i]}"
+    case $i in
+        0) description="仅数字" ;;
+        1) description="基本拉丁文（Basic latin，General punctuation）" ;;
+        2) description="盲文" ;;
+        3) description="自定义输入" ;;
+    esac
+    echo "$((i + 1)): ${symbol_ranges[i]} ($description)"
 done
 
 # 选择符号范围
@@ -61,7 +67,7 @@ if [[ $range_index -lt 1 || $range_index -gt ${#symbol_ranges[@]} ]]; then
     exit 1
 fi
 
-if [[ $range_index -eq 4 ]]; then
+if [[ $range_index -eq ${#symbol_ranges[@]} ]]; then
     read -p "请输入字符 支持以下几种格式
     单个字符
     多个字符用空格分隔  比如《我 饿 了》
