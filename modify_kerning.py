@@ -1,55 +1,42 @@
 import sys
-import os
-import tempfile
 from fontTools.ttLib import TTFont
-from fontTools.feaLib.builder import Builder
 
-if len(sys.argv) != 3:
-    print("用法: python modify_kerning.py <输入TTF文件> <输出TTF文件>")
-    sys.exit(1)
+def get_glyph_name_for_char(font, char):
+    """Get glyph name for a given character"""
+    for table in font['cmap'].tables:
+        if ord(char) in table.cmap:
+            return table.cmap[ord(char)]
+    return None
 
-input_ttf = sys.argv[1]
-output_ttf = sys.argv[2]
+def modify_glyph_width(font, char, width_adjustment):
+    """Modify the advance width of a glyph"""
+    glyph_name = get_glyph_name_for_char(font, char)
+    if glyph_name and glyph_name in font['hmtx'].metrics:
+        advance, lsb = font['hmtx'].metrics[glyph_name]
+        font['hmtx'].metrics[glyph_name] = (advance + width_adjustment, lsb)
 
-font = TTFont(input_ttf)
+def main():
+    if len(sys.argv) != 3:
+        print("用法: python modify_kerning.py <输入TTF文件> <输出TTF文件>")
+        sys.exit(1)
 
-feature_code = """
-feature kern {
-    # Define character classes
-    @LETTERS = [A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 
-                a b c d e f g h i j k l m n o p q r s t u v w x y z];
-    @STRAIGHT_QUOTES = [quotesingle quotedbl];
-    @CURLY_QUOTES = [quoteleft quoteright quotedblleft quotedblright];
-    @PUNCTUATION = [period comma semicolon colon exclam question];
+    input_ttf = sys.argv[1]
+    output_ttf = sys.argv[2]
     
-    # Bilateral kerning adjustments
-    # Letters followed by quotes/punctuation
-    pos @LETTERS @STRAIGHT_QUOTES -40;
-    pos @LETTERS @CURLY_QUOTES -40;
-    pos @LETTERS @PUNCTUATION -20;
+    font = TTFont(input_ttf)
     
-    # Quotes/punctuation followed by letters
-    pos @STRAIGHT_QUOTES @LETTERS -40;
-    pos @CURLY_QUOTES @LETTERS -40;
-    pos @PUNCTUATION @LETTERS -20;
+    # Target characters to modify
+    quotes = ["'", '"', ''', ''', '"', '"', "‘", "’"]
+    punctuation = [',', '.', ';', ':', '!', '?']
     
-    # Consecutive quotes
-    pos @STRAIGHT_QUOTES @STRAIGHT_QUOTES -60;
-    pos @CURLY_QUOTES @CURLY_QUOTES -60;
-    pos @STRAIGHT_QUOTES @CURLY_QUOTES -60;
-    pos @CURLY_QUOTES @STRAIGHT_QUOTES -60;
-} kern;
-"""
-
-with tempfile.NamedTemporaryFile("w", suffix=".fea", delete=False) as tmp:
-    tmp.write(feature_code)
-    fea_path = tmp.name
-
-try:
-    builder = Builder(font, fea_path)
-    builder.build(debug=True)
-
+    # Adjust width for each character
+    for char in quotes:
+        modify_glyph_width(font, char, -40)  # Reduce width by 40 units
+    for char in punctuation:
+        modify_glyph_width(font, char, -20)  # Reduce width by 20 units
+        
     font.save(output_ttf)
-    print(f"字体'{input_ttf}'已添加字距调整，并保存为'{output_ttf}'。")
-finally:
-    os.remove(fea_path)
+    print(f"字体'{input_ttf}'已修改字符宽度，并保存为'{output_ttf}'。")
+
+if __name__ == "__main__":
+    main()
