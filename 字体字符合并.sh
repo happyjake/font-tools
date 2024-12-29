@@ -42,7 +42,10 @@ secondary_font="${ttf_files[$((secondary_index - 1))]}"
 
 # 显示符号范围供用户选择, 查找字符编码参考链接
 # https://www.babelstone.co.uk/Unicode/whatisit.html
-# 0x2018-0x2019 是中文引号 ‘’，但的英文文章里也经常用到。如果不加上，合并后的字体在显示英文文章时会留下巨大的空格。
+# https://codepoints.net/U+2019?lang=en
+# 0x0021-0x007E 是基本拉丁文字符，包含了英文标点，数字，大小写字母等。 见 https://codepoints.net/basic_latin
+# 0x2018-0x2019 是中文引号 ‘’，但的英文文章里也经常用到。 见 https://codepoints.net/general_punctuation
+#               如果不加上，合并后的字体在显示英文文章时会留下巨大的空格。
 symbol_ranges=("0x0030-0x0039" "0x0021-0x007E 0x2018-0x2019" "0x2800-0x28FF" "自定义输入")
 echo "可用的符号编码范围：1 仅数字 2 基本拉丁文 3 盲文 4 自定义输入"
 for i in "${!symbol_ranges[@]}"; do
