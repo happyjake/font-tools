@@ -22,10 +22,22 @@ feature kern {
     @CURLY_QUOTES = [quoteleft quoteright quotedblleft quotedblright];
     @PUNCTUATION = [period comma semicolon colon exclam question];
     
-    # Kerning adjustments
-    pos @STRAIGHT_QUOTES @LETTERS -20;
-    pos @CURLY_QUOTES @LETTERS -20;
-    pos @PUNCTUATION @LETTERS -10;
+    # Bilateral kerning adjustments
+    # Letters followed by quotes/punctuation
+    pos @LETTERS @STRAIGHT_QUOTES -40;
+    pos @LETTERS @CURLY_QUOTES -40;
+    pos @LETTERS @PUNCTUATION -20;
+    
+    # Quotes/punctuation followed by letters
+    pos @STRAIGHT_QUOTES @LETTERS -40;
+    pos @CURLY_QUOTES @LETTERS -40;
+    pos @PUNCTUATION @LETTERS -20;
+    
+    # Consecutive quotes
+    pos @STRAIGHT_QUOTES @STRAIGHT_QUOTES -60;
+    pos @CURLY_QUOTES @CURLY_QUOTES -60;
+    pos @STRAIGHT_QUOTES @CURLY_QUOTES -60;
+    pos @CURLY_QUOTES @STRAIGHT_QUOTES -60;
 } kern;
 """
 
