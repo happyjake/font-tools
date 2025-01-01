@@ -1,7 +1,31 @@
-import sys
 import os
-from fontTools.ttLib import TTFont
 import xml.etree.ElementTree as ET
+from fontTools.ttLib import TTFont
+
+NAME_ID_MEANINGS = {
+    0: "Copyright",
+    1: "Font Family",
+    2: "Font Subfamily",
+    3: "Unique Identifier",
+    4: "Full Font Name",
+    5: "Version",
+    6: "PostScript Name",
+    7: "Trademark",
+    8: "Manufacturer",
+    9: "Designer",
+    10: "Description",
+    11: "Vendor URL",
+    12: "Designer URL",
+    13: "License Description",
+    14: "License URL",
+    16: "Preferred Family",
+    17: "Preferred Subfamily",
+    18: "Compatible Full",
+    19: "Sample Text",
+    20: "PostScript CID",
+    21: "WWS Family Name",
+    22: "WWS Subfamily Name"
+}
 
 def get_name_record(tt, name_id):
     """Return the string for nameID if found, otherwise empty."""
@@ -22,7 +46,8 @@ def get_font_weight_range(tt):
                 return ",".join(str(x) for x in range(int(axis.minValue), int(axis.maxValue)+100, 100))
     return "150,200,250,300,350,400,450,500,550,600,650,700"
 
-def generate_description_xml(ttf_path):
+def generate_description_xml(ttf_path, output_file="description.xml"):
+    """Generate description.xml for a given TTF, saving to 'output_file'."""
     tt = TTFont(ttf_path)
 
     version_str = get_name_record(tt, 5) or "1.00"
@@ -74,11 +99,13 @@ def generate_description_xml(ttf_path):
     desc_zh_el = ET.SubElement(descriptions_el, "description", locale="zh_CN")
     desc_zh_el.text = full_name_str
 
-    # Pretty-print (requires Python 3.9+)
-    ET.indent(theme, space="    ")
+    if hasattr(ET, "indent"):
+        # Pretty-print for Python 3.9+
+        ET.indent(theme, space="    ")
 
     tree = ET.ElementTree(theme)
-    tree.write("description.xml", encoding="UTF-8", xml_declaration=True)
+    tree.write(output_file, encoding="UTF-8", xml_declaration=True)
+    print(f"Generated description XML: {output_file}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
