@@ -115,31 +115,6 @@ if __name__ == "__main__":
     # before output, print all the ttf meta info
     tt = TTFont(sys.argv[1])
     print(f"Font: {sys.argv[1]}")
-    # Name ID meanings from OpenType spec
-    NAME_ID_MEANINGS = {
-        0: "Copyright",
-        1: "Font Family",
-        2: "Font Subfamily",
-        3: "Unique Identifier",
-        4: "Full Font Name",
-        5: "Version",
-        6: "PostScript Name",
-        7: "Trademark",
-        8: "Manufacturer",
-        9: "Designer",
-        10: "Description",
-        11: "Vendor URL",
-        12: "Designer URL",
-        13: "License Description",
-        14: "License URL",
-        16: "Preferred Family",
-        17: "Preferred Subfamily",
-        18: "Compatible Full",
-        19: "Sample Text",
-        20: "PostScript CID",
-        21: "WWS Family Name",
-        22: "WWS Subfamily Name"
-    }
 
     for record in tt['name'].names:
         meaning = NAME_ID_MEANINGS.get(record.nameID, "Unknown")
