@@ -92,20 +92,28 @@ def merge_fonts(main_font_path, secondary_font_path, unicode_range):
                     if comp.glyphName not in visited:
                         queue.appendleft(comp.glyphName)
 
-        # Update cmap for all codepoints
+        # Update cmap for all codepoints, show progress
+        print("\n更新 CMap...")
+        cmap_count = 0
         for cp in codepoints:
             gname = sec_best_cmap.get(cp)
             if gname:
                 main_best_cmap[cp] = gname
+            cmap_count += 1
+            if cmap_count % progress_interval == 0:
+                print(f"已更新 {cmap_count} / {len(codepoints)} 个 codepoint 映射...")
 
         # Copy .notdef if present
         if '.notdef' in sec_glyf:
             main_glyf['.notdef'] = sec_glyf['.notdef']
+            print("已复制 .notdef 字形")
 
         # Save output
         base_main_name = os.path.splitext(os.path.basename(main_font_path))[0]
         base_secondary_name = os.path.splitext(os.path.basename(secondary_font_path))[0]
         output_file = f'合并完成_{base_main_name}_{base_secondary_name}.ttf'
+        # log before saving
+        print(f"\n保存合并后文件中...")
         main_font.save(output_file)
 
         elapsed = time.time() - start_time
