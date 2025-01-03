@@ -1,149 +1,125 @@
-from fontTools.ttLib import TTFont
-import os
 import sys
-from tqdm import tqdm
-from collections import defaultdict
+import traceback
+import os
+import time
+from collections import deque
+from fontTools.ttLib import TTFont
 
 def get_unicode_range(range_str):
-    """Parse unicode range from string with multiple formats."""
+    """Parse a Unicode range string. Splits by space, supports formats like:
+    U+4E00-U+9FFF or 4E00-9FFF or single chars 'a', 'U+4E00', etc."""
     codepoints = set()
-    
-    # Split by spaces first
-    for part in range_str.split():
-        # Handle hex range format
+    parts = range_str.strip().split()
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
         if '-' in part:
-            start, end = part.split('-')
-            start = int(start, 16) if '0x' in start else int(start)
-            end = int(end, 16) if '0x' in end else int(end)
+            start_str, end_str = part.replace('U+', '').split('-')
+            start = int(start_str, 16)
+            end = int(end_str, 16)
             codepoints.update(range(start, end + 1))
         else:
-            # Handle character list
-            for char in part.split(','):
-                if len(char.strip()) > 0:
-                    codepoints.add(ord(char[0]))
-    
-    return sorted(codepoints)  # Return sorted list for consistent processing
+            part = part.replace('U+', '')
+            if len(part) == 1:
+                codepoints.add(ord(part))
+            else:
+                codepoints.add(int(part, 16))
+    return codepoints
 
 def merge_fonts(main_font_path, secondary_font_path, unicode_range):
-    """Merge glyphs from secondary font into main font with performance tracking."""
-    start_time = time.time()
-    process = psutil.Process()
-    start_memory = process.memory_info().rss / 1024 / 1024
+    """Merge glyphs from secondary_font into main_font for given codepoints, showing progress."""
+    try:
+        start_time = time.time()
 
-    print(f"开始合并字体...")
-    stats = {'total_glyphs': 0, 'processed': 0, 'deps': 0, 'cmap_updates': 0}
+        # Load fonts
+        main_font = TTFont(main_font_path)
+        secondary_font = TTFont(secondary_font_path)
 
-    # Load and cache font tables
-    main_font = TTFont(main_font_path)
-    secondary_font = TTFont(secondary_font_path)
-    main_glyf = main_font['glyf']
-    secondary_glyf = secondary_font['glyf']
-    main_hmtx = main_font['hmtx'].metrics
-    secondary_hmtx = secondary_font['hmtx'].metrics
+        # Convert range to a set of codepoints
+        codepoints = get_unicode_range(unicode_range)
+        if not codepoints:
+            print("未指定有效的合并范围，退出。")
+            return
 
-    # Pre-process data
-    codepoints = set(get_unicode_range(unicode_range))
-    print(f"合并范围: {min(codepoints):#x} 到 {max(codepoints):#x} （共 {len(codepoints)} 个字符）")
-    
-    secondary_cmap = secondary_font['cmap'].getBestCmap()
-    main_glyphs = {name: True for name in main_font.getGlyphOrder()}
-    glyph_queue = set()
-    cmap_updates = {}
+        print(f"合并范围: {hex(min(codepoints))} 到 {hex(max(codepoints))} （共 {len(codepoints)} 个字符）")
 
-    # Build dependency graph
-    print("分析字形依赖关系...")
-    t0 = time.time()
-    dep_graph = defaultdict(set)
-    for codepoint in tqdm(codepoints):
-        if codepoint not in secondary_cmap:
-            continue
-        glyph_name = secondary_cmap[codepoint]
-        if glyph_name not in secondary_glyf:
-            continue
-        
-        glyph_queue.add(glyph_name)
-        cmap_updates[codepoint] = glyph_name
-        
-        glyph = secondary_glyf[glyph_name]
-        if hasattr(glyph, 'components'):
-            deps = {c.glyphName for c in glyph.components}
-            dep_graph[glyph_name].update(deps)
-            stats['deps'] += len(deps)
+        # Cache tables for speed
+        main_glyf = main_font['glyf']
+        main_hmtx = main_font['hmtx'].metrics
+        sec_glyf = secondary_font['glyf']
+        sec_hmtx = secondary_font['hmtx'].metrics
 
-    stats['dep_time'] = time.time() - t0
-    stats['total_glyphs'] = len(glyph_queue)
+        sec_best_cmap = secondary_font['cmap'].getBestCmap()
+        main_best_cmap = main_font['cmap'].getBestCmap()
 
-    # Copy glyphs with dependencies
-    print(f"复制字形数据...")
-    t0 = time.time()
-    processed = set()
-    
-    with tqdm(total=len(glyph_queue)) as pbar:
-        while glyph_queue:
-            glyph_name = glyph_queue.pop()
-            if glyph_name in processed:
+        # Collect glyphs to merge
+        glyphs_to_merge = set()
+        for cp in codepoints:
+            gname = sec_best_cmap.get(cp)
+            if gname and gname in sec_glyf:
+                glyphs_to_merge.add(gname)
+
+        print(f"需要处理的字形数: {len(glyphs_to_merge)}")
+
+        # BFS approach to copy glyphs + dependencies
+        visited = set()
+        queue = deque(glyphs_to_merge)
+        processed_count = 0
+        progress_interval = 50
+
+        while queue:
+            glyph_name = queue.pop()
+            if glyph_name in visited:
                 continue
+            visited.add(glyph_name)
 
-            # Process dependencies first
-            deps = dep_graph[glyph_name]
-            if deps:
-                missing_deps = deps - processed
-                if missing_deps:
-                    glyph_queue.add(glyph_name)
-                    for dep in missing_deps:
-                        if dep not in main_glyphs:
-                            main_glyf[dep] = secondary_glyf[dep]
-                            main_hmtx[dep] = secondary_hmtx[dep]
-                            main_glyphs[dep] = True
-                            processed.add(dep)
-                            stats['processed'] += 1
-                    continue
+            # Copy glyph data
+            if glyph_name in sec_glyf:
+                main_glyf[glyph_name] = sec_glyf[glyph_name]
+            if glyph_name in sec_hmtx:
+                main_hmtx[glyph_name] = sec_hmtx[glyph_name]
+            processed_count += 1
 
-            # Copy main glyph
-            main_glyf[glyph_name] = secondary_glyf[glyph_name]
-            main_hmtx[glyph_name] = secondary_hmtx[glyph_name]
-            main_glyphs[glyph_name] = True
-            processed.add(glyph_name)
-            stats['processed'] += 1
-            pbar.update(1)
+            # Print progress every N glyphs
+            if processed_count % progress_interval == 0:
+                print(f"已处理 {processed_count} 个字形...")
 
-    stats['copy_time'] = time.time() - t0
+            # If it's composite, enqueue dependencies
+            glyph_obj = sec_glyf[glyph_name]
+            if hasattr(glyph_obj, 'components') and glyph_obj.components:
+                for comp in glyph_obj.components:
+                    if comp.glyphName not in visited:
+                        queue.appendleft(comp.glyphName)
 
-    # Update cmap
-    print("更新字符映射...")
-    t0 = time.time()
-    main_font['cmap'].getBestCmap().update(cmap_updates)
-    stats['cmap_time'] = time.time() - t0
-    stats['cmap_updates'] = len(cmap_updates)
+        # Update cmap for all codepoints
+        for cp in codepoints:
+            gname = sec_best_cmap.get(cp)
+            if gname:
+                main_best_cmap[cp] = gname
 
-    # Save result
-    output_file = f'合并完成_{os.path.splitext(os.path.basename(main_font_path))[0]}.ttf'
-    main_font.save(output_file)
+        # Copy .notdef if present
+        if '.notdef' in sec_glyf:
+            main_glyf['.notdef'] = sec_glyf['.notdef']
 
-    # Print performance stats
-    end_time = time.time()
-    end_memory = process.memory_info().rss / 1024 / 1024
-    total_time = end_time - start_time
+        # Save output
+        base_main_name = os.path.splitext(os.path.basename(main_font_path))[0]
+        base_secondary_name = os.path.splitext(os.path.basename(secondary_font_path))[0]
+        output_file = f'合并完成_{base_main_name}_{base_secondary_name}.ttf'
+        main_font.save(output_file)
 
-    print(f"\n性能统计:")
-    print(f"总耗时: {total_time:.2f}秒")
-    print(f"依赖分析: {stats['dep_time']:.2f}秒")
-    print(f"字形复制: {stats['copy_time']:.2f}秒")
-    print(f"映射更新: {stats['cmap_time']:.2f}秒")
-    print(f"内存使用: {end_memory-start_memory:.1f}MB")
-    print(f"总字形数: {stats['total_glyphs']}")
-    print(f"依赖字形: {stats['deps']}")
-    print(f"处理字形: {stats['processed']}")
-    print(f"字符映射: {stats['cmap_updates']}")
-    print(f"处理速度: {stats['processed']/total_time:.1f}字形/秒")
-    print(f"输出文件: {output_file}")
+        elapsed = time.time() - start_time
+        print(f"\n合并完成，处理 {processed_count} 个字形，共耗时 {elapsed:.2f} 秒。")
+        print(f"已将文件另存为：{output_file}")
 
-    return output_file
+    except Exception as e:
+        print(f"发生错误：{e}")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
         print("用法: python merge_fonts.py <主字体路径> <辅助字体路径> <Unicode范围>")
-        print("例如: python merge_fonts.py main.ttf secondary.ttf 0x4E00-0x9FFF")
+        print("例如: python merge_fonts.py main.ttf secondary.ttf 'U+4E00-U+9FFF'")
         sys.exit(1)
-        
+
     merge_fonts(sys.argv[1], sys.argv[2], sys.argv[3])
