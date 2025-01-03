@@ -1,2 +1,13 @@
-Pillow==10.2.0
-fonttools==4.49.0
+# Python >= 3.9 required
+
+# Core dependencies
+fonttools==4.47.0  # Font manipulation
+Pillow==10.2.0    # Image processing
+tqdm==4.66.1      # Progress bars
+
+# System utilities
+psutil==5.9.8     # System and process monitoring
+
+# Optional dependencies
+# pytest>=7.4.0   # Testing
+# black>=23.0.0   # Code formatting
