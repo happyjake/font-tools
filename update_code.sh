@@ -12,7 +12,7 @@ git pull
 pull_status=$?
 
 # if not in venv, source it
-if [[ -z "$VIRTUAL_ENV" ]]; then
+if [[ -d ".venv" && -z "$VIRTUAL_ENV" ]]; then
     source .venv/bin/activate
 fi
 pip install -r requirements.txt
