@@ -114,7 +114,15 @@ def merge_fonts(main_font_path, secondary_font_path, unicode_range):
         output_file = f'合并完成_{base_main_name}_{base_secondary_name}.ttf'
         # log before saving
         print(f"\n保存合并后文件中...")
-        main_font.save(output_file)
+        # main_font.save(output_file)
+        # Remove the unwanted arguments:
+        main_font.recalcBBoxes = False
+        main_font.recalcTimestamp = False
+
+        main_font.save(
+            output_file,
+            reorderTables=False  # You can still disable table reordering
+        )
 
         elapsed = time.time() - start_time
         print(f"\n合并完成，处理 {processed_count} 个字形，共耗时 {elapsed:.2f} 秒。")
