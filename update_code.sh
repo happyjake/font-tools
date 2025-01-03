@@ -11,5 +11,11 @@ echo "Pulling latest changes..."
 git pull
 pull_status=$?
 
+# if not in venv, source it
+if [[ -z "$VIRTUAL_ENV" ]]; then
+    source .venv/bin/activate
+fi
+pip install -r requirements.txt
+
 # Reapply Termux shebang
 termux-fix-shebang *.sh
