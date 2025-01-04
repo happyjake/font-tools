@@ -5,6 +5,16 @@ from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.misc.transform import Identity
 
+def print_progress(current, total, width=50):
+    """Print progress bar without dependencies"""
+    progress = current / total
+    filled = int(width * progress)
+    bar = f"\r处理进度: [{'=' * filled}{'>' if filled < width else ''}{' ' * (width - filled)}] "
+    bar += f"{current}/{total} ({progress:.1%})"
+    print(bar, end='', flush=True)
+    if current == total:
+        print()  # New line on completion
+
 def list_ttf_files(directory):
     return [f for f in os.listdir(directory) if f.lower().endswith('.ttf')]
 
@@ -30,9 +40,11 @@ def adjust_weight(font, scale):
     glyf_table = font['glyf']
     print("开始缩放轮廓...")
     step_start = time.time()
+
     glyphs = font.getGlyphOrder()
     total_glyphs = len(glyphs)
-    
+    processed = 0
+
     for i, glyph_name in enumerate(glyphs, 1):
         glyph = glyf_table[glyph_name]
         if glyph.isComposite():
@@ -42,10 +54,13 @@ def adjust_weight(font, scale):
         transform_pen = TransformPen(pen, transform)
         glyph.draw(transform_pen, glyf_table)
         glyf_table[glyph_name] = pen.glyph()
-    
+        processed += 1
+        
         # Show progress every 10 glyphs
-        if i % 2000 == 0 or i == total_glyphs:
-            print(f"已处理 {i} / {total_glyphs} 个字形...")
+        if i % 100 == 0 or i == total_glyphs:
+            # Update progress bar
+            print_progress(processed, total_glyphs)
+
     scale_time = time.time() - step_start
     print(f"缩放轮廓耗时: {scale_time:.2f}s\n")
 
