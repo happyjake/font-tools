@@ -20,7 +20,7 @@ for script in *.sh; do
 done
 
 # 自定义排序（保持原有序号）
-sorted_files=("字体百分比缩放" "字体字符合并" "修改ttf信息" "生成mtz" "查看字体upm值" "修改字体upm为1000+手动选择改度_量" "修改英文标点间距" "可变字体母版重量_查看+修改" "ttf解包ttx" "ttx打包ttf" "分解ttc" "提取VF字体指定字重" "修改字体版本信息" "update_code" "checkout_history")
+sorted_files=("字体百分比缩放" "字体字符合并" "修改ttf信息" "生成mtz" "查看字体upm值" "修改字体upm为1000+手动选择改度_量" "修改字重" "修改英文标点间距" "可变字体母版重量_查看+修改" "ttf解包ttx" "ttx打包ttf" "分解ttc" "提取VF字体指定字重" "修改字体版本信息" "update_code" "checkout_history")
 
 while true; do
     # Show current commit
