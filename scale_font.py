@@ -30,7 +30,10 @@ def adjust_weight(font, scale):
     glyf_table = font['glyf']
     print("开始缩放轮廓...")
     step_start = time.time()
-    for glyph_name in font.getGlyphOrder():
+    glyphs = font.getGlyphOrder()
+    total_glyphs = len(glyphs)
+    
+    for i, glyph_name in enumerate(glyphs, 1):
         glyph = glyf_table[glyph_name]
         if glyph.isComposite():
             continue
@@ -39,6 +42,10 @@ def adjust_weight(font, scale):
         transform_pen = TransformPen(pen, transform)
         glyph.draw(transform_pen, glyf_table)
         glyf_table[glyph_name] = pen.glyph()
+    
+        # Show progress every 10 glyphs
+        if i % 10 == 0 or i == total_glyphs:
+            print(f"已处理 {i} / {total_glyphs} 个字形...")
     scale_time = time.time() - step_start
     print(f"缩放轮廓耗时: {scale_time:.2f}s\n")
 
