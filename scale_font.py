@@ -5,18 +5,17 @@ from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.misc.transform import Identity
 import multiprocessing as mp
-from multiprocessing import Pool, Value, Lock
+from multiprocessing.managers import SyncManager
 from functools import partial
 
 def print_progress(current, total, width=50):
-    """Print progress bar without dependencies"""
     progress = current / total
     filled = int(width * progress)
     bar = f"\r处理进度: [{'=' * filled}{'>' if filled < width else ''}{' ' * (width - filled)}] "
     bar += f"{current}/{total} ({progress:.1%})"
     print(bar, end='', flush=True)
     if current == total:
-        print()  # New line on completion
+        print()
 
 def list_ttf_files(directory):
     return [f for f in os.listdir(directory) if f.lower().endswith('.ttf')]
@@ -33,74 +32,64 @@ def fix_gvar_table(font):
     for glyph_name in broken:
         del font["gvar"].variations[glyph_name]
 
-def process_glyph_chunk(args):
-    chunk, scale, progress_counter, total_glyphs, lock = args
+def process_glyph_chunk(chunk_data):
+    chunk, scale, glyf_table = chunk_data
     results = {}
-    
+
+    # show start of chunk work with thread id
+    print(f"开始处理字形块, {len(chunk)}个字形，线程ID: {mp.current_process().name}")
+
     for glyph_name, glyph in chunk:
         if glyph.isComposite():
             continue
             
-        # Process glyph
-        pen = TTGlyphPen(None)  # No font needed for basic pen
+        pen = TTGlyphPen(None)
         transform = Identity.scale(scale)
         transform_pen = TransformPen(pen, transform)
-        glyph.draw(transform_pen)
+        # Pass glyf_table to draw()
+        glyph.draw(transform_pen, glyf_table)
         results[glyph_name] = pen.glyph()
-        
-        # Update progress safely
-        with lock:
-            progress_counter.value += 1
-            progress = progress_counter.value
-            # Show progress every 10 glyphs
-            if progress % 100 == 0 or progress == total_glyphs:
-                print_progress(progress, total_glyphs)
             
     return results
 
 def adjust_weight(font, scale):
+    # Start timing for gvar fix
+    fix_start = time.time()
     print("开始修复 gvar...")
-    step_start = time.time()
     fix_gvar_table(font)
-    fix_time = time.time() - step_start
-    print(f"修复 gvar 耗时: {fix_time:.2f}s\n")
-
+    fix_time = time.time() - fix_start
+    print(f"修复 gvar 耗时: {fix_time:.2f}s")
+    
+    # Start timing for scaling
+    scale_start = time.time()
+    print("\n开始缩放处理...")
+    
     glyf_table = font['glyf']
-    print("开始并行缩放轮廓...")
-    step_start = time.time()
-
-    # Prepare data for parallel processing
     glyphs = [(name, glyf_table[name]) for name in font.getGlyphOrder()]
     total_glyphs = len(glyphs)
     
-    # Split into chunks for each CPU core
+    # Split work into chunks
     cpu_count = mp.cpu_count()
     chunk_size = max(1, total_glyphs // cpu_count)
     chunks = [glyphs[i:i + chunk_size] for i in range(0, len(glyphs), chunk_size)]
+    chunks_with_data = [(chunk, scale, glyf_table) for chunk in chunks]
     
-    # Shared progress counter
-    progress_counter = Value('i', 0)
-    lock = Lock()
+    # Process in parallel
+    with mp.Pool(cpu_count) as pool:
+        results = pool.map(process_glyph_chunk, chunks_with_data)
     
-    # Process chunks in parallel
-    pool = Pool(cpu_count)
-    process_func = partial(process_glyph_chunk, 
-                         scale=scale,
-                         progress_counter=progress_counter,
-                         total_glyphs=total_glyphs,
-                         lock=lock)
-    
-    results = pool.map(process_func, chunks)
-    pool.close()
-    pool.join()
-    
-    # Merge results back to font
+    # Merge results
+    processed = 0
     for chunk_result in results:
         for glyph_name, new_glyph in chunk_result.items():
             glyf_table[glyph_name] = new_glyph
-
-    scale_time = time.time() - step_start
-    print(f"\n缩放轮廓耗时: {scale_time:.2f}s\n")
+            processed += 1
+            # Show progress every 10 glyphs
+            if processed % 1000 == 0 or processed == total_glyphs:
+                print_progress(processed, total_glyphs)
+            
+    scale_time = time.time() - scale_start
+    print(f"\n缩放完成，耗时: {scale_time:.2f}s")
     
     return fix_time, scale_time
 
