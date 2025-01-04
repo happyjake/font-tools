@@ -1,10 +1,26 @@
 #!/bin/bash
 
-# 遍历当前目录下的 TTF 文件
 counter=1
+declare -A file_times
 files=()
+
+# Get files with modification times
 for file in *.ttf; do
-    echo "${counter}. ${file}"
+    mtime=$(stat -c %Y "$file")
+    file_times["$file"]=$mtime
+done
+
+# Sort files by modification time (newest first)
+readarray -t sorted_files < <(
+    for file in "${!file_times[@]}"; do
+        echo "${file_times[$file]}|$file"
+    done | sort -rn | cut -d'|' -f2
+)
+
+# Display sorted files with dates
+for file in "${sorted_files[@]}"; do
+    mtime=$(date -r "$file" "+%Y-%m-%d %H:%M:%S")
+    echo "${counter}. ${file} (${mtime})"
     files+=("$file")
     counter=$((counter + 1))
 done

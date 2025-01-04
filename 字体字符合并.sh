@@ -12,16 +12,29 @@ echo "
 当主字体是可变字体 次字体是单字重字体时
 两者必须都包含需要合并的符号 否则无法正确合并
 "
-ttf_files=(*.ttf)
+# Get TTF files with modification times
+declare -A file_times
+for file in *.ttf; do
+    [[ -f "$file" ]] || continue
+    file_times["$file"]=$(stat -c %Y "$file")
+done
 
-if [ ${#ttf_files[@]} -eq 0 ]; then
+if [ ${#file_times[@]} -eq 0 ]; then
     echo "当前目录没有找到 TTF 文件。"
     exit 1
 fi
 
-# 显示可用的字体文件
+# Sort by modification time (newest first)
+readarray -t ttf_files < <(
+    for file in "${!file_times[@]}"; do
+        echo "${file_times[$file]}|$file"
+    done | sort -rn | cut -d'|' -f2
+)
+
+# Display sorted files with dates
 for i in "${!ttf_files[@]}"; do
-    echo "$((i + 1)): ${ttf_files[i]}"
+    mtime=$(date -r "${ttf_files[i]}" "+%Y-%m-%d %H:%M:%S")
+    echo "$((i + 1)): ${ttf_files[i]} ($mtime)"
 done
 
 # 选择主字体

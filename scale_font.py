@@ -18,7 +18,20 @@ def print_progress(current, total, width=50):
         print()
 
 def list_ttf_files(directory):
-    return [f for f in os.listdir(directory) if f.lower().endswith('.ttf')]
+    """Return TTF files sorted by modification time (newest first)"""
+    # Get files with timestamps
+    ttf_files = []
+    for f in os.listdir(directory):
+        if f.lower().endswith('.ttf'):
+            path = os.path.join(directory, f)
+            mtime = os.path.getmtime(path)
+            ttf_files.append((mtime, f))
+    
+    # Sort by timestamp descending
+    ttf_files.sort(reverse=True)
+    
+    # Return only filenames
+    return [f for _, f in ttf_files]
 
 def fix_gvar_table(font):
     if "gvar" not in font:

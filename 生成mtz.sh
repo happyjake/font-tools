@@ -1,12 +1,30 @@
 #!/bin/bash
 
-# 遍历当前目录下的 TTF 文件
-counter=1
-files=()
+# Get TTF files sorted by modification time
+declare -A file_times
 for file in *.ttf; do
-    echo "${counter}. ${file}"
-    files+=("$file")
-    counter=$((counter + 1))
+    [[ -f "$file" ]] || continue
+    file_times["$file"]=$(stat -c %Y "$file")
+done
+
+# Check for TTF files
+if [ ${#file_times[@]} -eq 0 ]; then
+    echo "当前目录没有找到 TTF 文件。"
+    exit 1
+fi
+
+# Sort by modification time (newest first)
+readarray -t files < <(
+    for file in "${!file_times[@]}"; do
+        echo "${file_times[$file]}|$file"
+    done | sort -rn | cut -d'|' -f2
+)
+
+# Display sorted files with dates
+for i in "${!files[@]}"; do
+    counter=$((i + 1))
+    mtime=$(date -r "${files[i]}" "+%Y-%m-%d %H:%M:%S")
+    echo "${counter}. ${files[i]} ($mtime)"
 done
 
 if [ ${#files[@]} -eq 0 ]; then
