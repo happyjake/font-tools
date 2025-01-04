@@ -40,8 +40,25 @@ fi
 
 selected_file="${files[$choice-1]}"
 
-# 调用 Python 脚本修改字体信息
-python3 weight_font.py "$selected_file"
+# Prompt for weight scale
+echo "请输入字重缩放比例 (例如: 1.2 或 120%)："
+read scale_input
+
+# Convert percentage to decimal if needed
+if [[ $scale_input == *"%" ]]; then
+    scale=$(echo "scale=2; ${scale_input%\%}/100" | bc)
+else
+    scale=$scale_input
+fi
+
+# Validate scale input
+if (( $(echo "$scale <= 0" | bc -l) )); then
+    echo "缩放比例必须大于0"
+    exit 1
+fi
+
+# Call Python script with scale parameter
+python3 weight_font.py "$selected_file" "$scale"
 if [ $? -eq 0 ]; then
     echo "字体字重修改完成！"
 else
