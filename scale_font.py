@@ -44,7 +44,7 @@ def adjust_weight(font, scale):
         glyf_table[glyph_name] = pen.glyph()
     
         # Show progress every 10 glyphs
-        if i % 10 == 0 or i == total_glyphs:
+        if i % 2000 == 0 or i == total_glyphs:
             print(f"已处理 {i} / {total_glyphs} 个字形...")
     scale_time = time.time() - step_start
     print(f"缩放轮廓耗时: {scale_time:.2f}s\n")
