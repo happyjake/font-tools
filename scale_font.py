@@ -116,14 +116,18 @@ def main():
         return
 
     print("可用TTF:")
-    for i, f in enumerate(ttf_files):
+    for i, f in enumerate(ttf_files, start=1):
         print(f"{i}: {f}")
+    print("\n0: 退出")
 
     print("\n读取输入中...")
     step_start = time.time()
     try:
         choice = int(input("请输入TTF编号: "))
-        if not 0 <= choice < len(ttf_files):
+        if choice == 0:
+            print("已退出。")
+            return
+        elif not 1 <= choice <= len(ttf_files):
             print("选择无效。")
             return
     except ValueError:
@@ -145,8 +149,8 @@ def main():
     input_time = time.time() - step_start
     print(f"输入处理耗时: {input_time:.2f}s\n")
 
-    selected_file = ttf_files[choice]
-    print("加载字体中...")
+    selected_file = ttf_files[choice-1]
+    print(f"加载字体中... ({selected_file})")
     step_start = time.time()
     font = TTFont(selected_file)
     load_time = time.time() - step_start
