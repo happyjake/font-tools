@@ -1,6 +1,7 @@
 import os
+import sys
 import xml.etree.ElementTree as ET
-from fontTools.ttLib import TTFont
+from fontTools.ttLib import TTFont, TTCollection
 
 NAME_ID_MEANINGS = {
     0: "Copyright",
@@ -27,6 +28,16 @@ NAME_ID_MEANINGS = {
     22: "WWS Subfamily Name"
 }
 
+def get_tt_object(font_path, font_index=0):
+    """Return a TTFont object from TTC or TTF."""
+    with open(font_path, 'rb') as f:
+        signature = f.read(4)
+    if signature == b'ttcf':
+        ttc = TTCollection(font_path)
+        return ttc.fonts[font_index]
+    else:
+        return TTFont(font_path)
+
 def get_name_record(tt, name_id):
     """Return the string for nameID if found, otherwise empty."""
     if 'name' in tt:
@@ -46,14 +57,14 @@ def get_font_weight_range(tt):
                 return ",".join(str(x) for x in range(int(axis.minValue), int(axis.maxValue)+100, 100))
     return "150,200,250,300,350,400,450,500,550,600,650,700"
 
-def generate_description_xml(ttf_path, output_file="description.xml"):
-    """Generate description.xml for a given TTF, saving to 'output_file'."""
-    tt = TTFont(ttf_path)
+def generate_description_xml(font_path, output_file="description.xml", font_index=0):
+    """Generate description.xml for a given TTF/TTC, saving to 'output_file'."""
+    tt = get_tt_object(font_path, font_index)
 
     version_str = get_name_record(tt, 5) or "1.00"
     author_str = get_name_record(tt, 9) or "UnknownAuthor"
     designer_str = get_name_record(tt, 8) or "UnknownDesigner"
-    full_name_str = get_name_record(tt, 4) or os.path.splitext(os.path.basename(ttf_path))[0]
+    full_name_str = get_name_record(tt, 4) or os.path.splitext(os.path.basename(font_path))[0]
 
     if version_str.lower().startswith("version "):
         version_str = version_str[8:].strip()
@@ -61,7 +72,6 @@ def generate_description_xml(ttf_path, output_file="description.xml"):
     font_weights = get_font_weight_range(tt)
 
     theme = ET.Element("theme")
-
     version_el = ET.SubElement(theme, "version")
     version_el.text = version_str
 
@@ -108,19 +118,22 @@ def generate_description_xml(ttf_path, output_file="description.xml"):
     print(f"Generated description XML: {output_file}")
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python generate_description_xml.py <font_file.ttf>")
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
+        print("Usage: python mtz_description.py <font_file.ttf or font_file.ttc> [subfont_index]")
         sys.exit(1)
 
-    # before output, print all the ttf meta info
-    tt = TTFont(sys.argv[1])
-    print(f"Font: {sys.argv[1]}")
+    font_file = sys.argv[1]
+    index = 0
+    if len(sys.argv) == 3:
+        index = int(sys.argv[2])
 
+    # Print TTF/TTC meta info 
+    tt = get_tt_object(font_file, font_index=index)
+    print(f"Font: {font_file}, Subfont Index: {index}")
     for record in tt['name'].names:
         meaning = NAME_ID_MEANINGS.get(record.nameID, "Unknown")
         print(f"NameID {record.nameID} ({meaning}): {record.toUnicode().strip()}")
-    print(f"Weight Range: {get_font_weight_range(tt)}")
-    print("")
+    print(f"Weight Range: {get_font_weight_range(tt)}\n")
 
-    generate_description_xml(sys.argv[1])
+    generate_description_xml(font_file, "description.xml", font_index=index)
     print("Generated 'description.xml' with properly escaped XML (no CDATA).")

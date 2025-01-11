@@ -6,20 +6,29 @@ import shutil
 from mtz_description import generate_description_xml
 from mtz_logo import create_logo
 from mtz_preview import create_preview
-from fontTools.ttLib import TTFont
+from fontTools.ttLib import TTFont, TTCollection
 
-def get_full_font_name(font_path):
-    tt = TTFont(font_path)
-    full_name = os.path.splitext(os.path.basename(font_path))[0]
-    if 'name' in tt:
-        for record in tt['name'].names:
-            if record.nameID == 4:
-                try:
-                    full_name = record.toUnicode()
-                    break
-                except:
-                    pass
-    return full_name
+def get_full_font_name(font_path, font_index=0):
+    """Detect if font_path is TTC or TTF by reading its file header, then return the font's full name."""
+    with open(font_path, 'rb') as f:
+        signature = f.read(4)
+    
+    # If signature is b'ttcf', treat as a TrueType collection
+    if signature == b'ttcf':
+        ttc = TTCollection(font_path)  # remove fontNumber usage
+        font = ttc.fonts[font_index]   # pick the subfont from the collection
+    else:
+        font = TTFont(font_path)
+
+    # Attempt to read name table to get full name
+    name_table = font['name']
+    for record in name_table.names:
+        if record.nameID == 4:  # Full font name
+            if record.isUnicode():
+                return str(record.string, 'utf-16-be').strip()
+            else:
+                return record.string.decode('utf-8', errors='ignore').strip()
+    return "UnknownFontName"
 
 def make_mtz(ttf_path, preview_text_path="preview.txt", debug=False):
     # Convert to absolute paths

@@ -3,3 +3,4 @@
 *.dmg
 temp_changes.patch
 *.ttc
+*.pyc

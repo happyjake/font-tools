@@ -1,15 +1,15 @@
 #!/bin/bash
 
-# Get TTF files sorted by modification time
+# Get TTF/TTC files sorted by modification time
 declare -A file_times
-for file in *.ttf; do
+for file in *.ttf *.ttc; do
     [[ -f "$file" ]] || continue
     file_times["$file"]=$(stat -c %Y "$file")
 done
 
-# Check for TTF files
+# Check for TTF/TTC files
 if [ ${#file_times[@]} -eq 0 ]; then
-    echo "当前目录没有找到 TTF 文件。"
+    echo "当前目录没有找到 TTF/TTC 文件。"
     exit 1
 fi
 
@@ -28,7 +28,7 @@ for i in "${!files[@]}"; do
 done
 
 if [ ${#files[@]} -eq 0 ]; then
-    echo "当前目录下没有找到 TTF 文件。"
+    echo "当前目录下没有找到 TTF/TTC 文件。"
     exit 1
 fi
 
