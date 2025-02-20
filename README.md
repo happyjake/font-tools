@@ -25,6 +25,14 @@ source ./venv/Scripts/activate
 pip install -r requirements.txt
 ```
 
+### For Termux
+
+If you encounter an error while installing dependencies with pip, try installing libjpeg-turbo:
+
+```bash
+pkg in libjpeg-turbo
+```
+
 ## 使用方法
 
 ```bash
