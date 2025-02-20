@@ -7,13 +7,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p ~/.shortcuts
 
 # Create the shortcut script that Termux will execute
-cat > ~/.shortcuts/font-tools <<EOF
+cat >~/.shortcuts/font-tools <<EOF
 #!/data/data/com.termux/files/usr/bin/bash
 
 # Change to the project directory
 cd "${SCRIPT_DIR}"
 source venv/bin/activate
-bash 脚本选择.sh
+./脚本选择.sh
 EOF
 
 # Make the shortcut script executable
