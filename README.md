@@ -38,3 +38,32 @@ pkg in libjpeg-turbo
 ```bash
 ./脚本选择.sh
 ```
+
+## 常见问题 / Troubleshooting
+
+### Pillow _imagingft Import Error
+
+如果遇到以下错误 / If you encounter this error:
+
+```
+ImportError: cannot import name '_imagingft' from 'PIL' (/data/data/com.termux/files/home/font-tools/venv/lib/python3.12/site-packages/PIL/__init__.py)
+```
+
+解决方法 / Solution:
+
+1. 安装系统依赖 / Install system dependencies:
+```bash
+pkg install libjpeg-turbo freetype python-pillow
+```
+
+2. 重置虚拟环境 / Reset virtual environment:
+```bash
+deactivate
+source venv/bin/activate
+```
+
+3. 重新安装Pillow / Reinstall Pillow:
+```bash
+pip uninstall Pillow
+pip install --no-cache-dir Pillow
+```
